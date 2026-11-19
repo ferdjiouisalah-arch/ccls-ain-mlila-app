@@ -1,0 +1,6 @@
+{
+  "name": "تعاونية الحبوب والبقول الجافة - عين مليلة",
+  "description": "نظام متكامل لإدارة الأمن الصناعي والوقاية (HSE)، الصيانة الدورية للصوامع، مطفآت الحريق وكواشف الدخان لهياكل تعاونية الحبوب والبقول الجافة بعين مليلة (OAIC).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

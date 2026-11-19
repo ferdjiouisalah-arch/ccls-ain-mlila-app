@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized cooperative administrator UID marker",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "name": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "CooperativeMember": {
+      "title": "CooperativeMember",
+      "description": "Authorized CCLS Ain Mlila staff account linked to Google sign-in",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 160 },
+        "role": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "SecuritySetting": {
+      "title": "SecuritySetting",
+      "description": "Private supervisor phone & SMS alert configuration (PII protected)",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "supervisorName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "supervisorPhone": { "type": "string", "maxLength": 40 },
+        "smsAlertEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "supervisorName", "supervisorPhone", "smsAlertEnabled", "updatedAt"]
+    },
+    "OperationalRecord": {
+      "title": "OperationalRecord",
+      "description": "Synced HSE, maintenance, extinguisher, or smoke detector record",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "localId": { "type": "number" },
+        "type": { "type": "string", "enum": ["hse", "maintenance", "extinguishers", "smoke"] },
+        "field1": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "field2": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "ext_type": { "type": "string", "maxLength": 120 },
+        "ext_kg": { "type": "string", "maxLength": 20 },
+        "facility": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "start_date": { "type": "string", "maxLength": 20 },
+        "end_date": { "type": "string", "maxLength": 20 },
+        "priority": { "type": "string", "maxLength": 40 },
+        "responsible": { "type": "string", "maxLength": 160 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "manual_status": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "type", "field1", "field2", "facility", "start_date", "end_date", "createdAt", "updatedAt"]
+    },
+    "FireMotor": {
+      "title": "FireMotor",
+      "description": "Anti-Incendie electric fire pump motor operational status",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "localId": { "type": "number" },
+        "motorCode": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "motorName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "facility": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "powerKw": { "type": "number" },
+        "pressureBar": { "type": "number" },
+        "status": { "type": "string", "enum": ["تعمل", "عطب", "صيانة"] },
+        "lastTestDate": { "type": "string", "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 600 },
+        "updatedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "motorCode", "motorName", "facility", "powerKw", "pressureBar", "status", "createdAt", "updatedAt"]
+    },
+    "WaterTank": {
+      "title": "WaterTank",
+      "description": "Fire water storage tank volume and level measured in cubic meters (m3)",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "localId": { "type": "number" },
+        "tankCode": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "tankName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "facility": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "capacityM3": { "type": "number" },
+        "currentM3": { "type": "number" },
+        "minSafeM3": { "type": "number" },
+        "lastInspection": { "type": "string", "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 600 },
+        "updatedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "tankCode", "tankName", "facility", "capacityM3", "currentM3", "minSafeM3", "createdAt", "updatedAt"]
+    },
+    "IntruderAlert": {
+      "title": "IntruderAlert",
+      "description": "Unauthorized access attempt log with SMS notification record",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "localId": { "type": "number" },
+        "attemptedName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "deviceType": { "type": "string", "maxLength": 40 },
+        "deviceInfo": { "type": "string", "maxLength": 300 },
+        "targetPhone": { "type": "string", "maxLength": 40 },
+        "smsStatus": { "type": "string", "maxLength": 60 },
+        "smsMessage": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "attemptedName", "deviceType", "targetPhone", "smsStatus", "smsMessage", "createdAt"]
+    },
+    "StorageSnapshot": {
+      "title": "StorageSnapshot",
+      "description": "Data storage memory checkpoint created whenever data is saved",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "actionLabel": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 60 },
+        "deviceType": { "type": "string", "maxLength": 40 },
+        "recordCount": { "type": "number" },
+        "motorCount": { "type": "number" },
+        "tankCount": { "type": "number" },
+        "summary": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "actionLabel", "category", "deviceType", "recordCount", "motorCount", "tankCount", "summary", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Administrator registry"
+    },
+    "/cooperative_members/{uid}": {
+      "schema": { "$ref": "#/entities/CooperativeMember" },
+      "description": "Authorized CCLS staff accounts"
+    },
+    "/security_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SecuritySetting" },
+      "description": "PII-isolated supervisor phone and SMS alert config"
+    },
+    "/ccls_records/{recordId}": {
+      "schema": { "$ref": "#/entities/OperationalRecord" },
+      "description": "Cross-device synced safety and maintenance records"
+    },
+    "/fire_motors/{motorId}": {
+      "schema": { "$ref": "#/entities/FireMotor" },
+      "description": "Anti-Incendie electric fire pump motors"
+    },
+    "/water_tanks/{tankId}": {
+      "schema": { "$ref": "#/entities/WaterTank" },
+      "description": "Water storage tanks in cubic meters (m3)"
+    },
+    "/intruder_alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/IntruderAlert" },
+      "description": "Unauthorized access attempt notifications"
+    },
+    "/storage_snapshots/{snapshotId}": {
+      "schema": { "$ref": "#/entities/StorageSnapshot" },
+      "description": "Storage memory checkpoints on every save"
+    }
+  }
+}

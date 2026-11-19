@@ -1,0 +1,289 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'ferdjiouisalah@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(uid) {
+      return isVerified() && request.auth.uid == uid;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidAdminDoc(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'name', 'createdAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        (!('name' in data) || (data.name is string && data.name.size() <= 160)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidMemberDoc(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 160)) &&
+        (!('role' in data) || (data.role is string && data.role.size() <= 120)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSecuritySetting(data) {
+      return data.keys().hasAll(['ownerUid', 'supervisorName', 'supervisorPhone', 'smsAlertEnabled', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerUid', 'supervisorName', 'supervisorPhone', 'smsAlertEnabled', 'updatedAt']) &&
+        data.ownerUid is string && data.ownerUid == request.auth.uid &&
+        data.supervisorName is string && data.supervisorName.size() >= 1 && data.supervisorName.size() <= 160 &&
+        data.supervisorPhone is string && data.supervisorPhone.size() <= 40 &&
+        data.smsAlertEnabled is bool &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOperationalRecord(data) {
+      return data.keys().hasAll(['ownerUid', 'type', 'field1', 'field2', 'facility', 'start_date', 'end_date', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerUid', 'localId', 'type', 'field1', 'field2', 'ext_type', 'ext_kg', 'facility', 'start_date', 'end_date', 'priority', 'responsible', 'notes', 'manual_status', 'createdAt', 'updatedAt']) &&
+        data.ownerUid is string && data.ownerUid == request.auth.uid &&
+        (!('localId' in data) || data.localId is number) &&
+        data.type in ['hse', 'maintenance', 'extinguishers', 'smoke'] &&
+        data.field1 is string && data.field1.size() >= 1 && data.field1.size() <= 240 &&
+        data.field2 is string && data.field2.size() >= 1 && data.field2.size() <= 500 &&
+        (!('ext_type' in data) || (data.ext_type is string && data.ext_type.size() <= 120)) &&
+        (!('ext_kg' in data) || (data.ext_kg is string && data.ext_kg.size() <= 20)) &&
+        data.facility is string && data.facility.size() >= 1 && data.facility.size() <= 160 &&
+        data.start_date is string && data.start_date.size() >= 4 && data.start_date.size() <= 20 &&
+        data.end_date is string && data.end_date.size() >= 4 && data.end_date.size() <= 20 &&
+        (!('priority' in data) || (data.priority is string && data.priority.size() <= 40)) &&
+        (!('responsible' in data) || (data.responsible is string && data.responsible.size() <= 160)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        (!('manual_status' in data) || (data.manual_status is string && data.manual_status.size() <= 40)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFireMotor(data) {
+      return data.keys().hasAll(['ownerUid', 'motorCode', 'motorName', 'facility', 'powerKw', 'pressureBar', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerUid', 'localId', 'motorCode', 'motorName', 'facility', 'powerKw', 'pressureBar', 'status', 'lastTestDate', 'notes', 'updatedBy', 'createdAt', 'updatedAt']) &&
+        data.ownerUid is string && data.ownerUid == request.auth.uid &&
+        (!('localId' in data) || data.localId is number) &&
+        data.motorCode is string && data.motorCode.size() >= 1 && data.motorCode.size() <= 80 &&
+        data.motorName is string && data.motorName.size() >= 1 && data.motorName.size() <= 200 &&
+        data.facility is string && data.facility.size() >= 1 && data.facility.size() <= 160 &&
+        data.powerKw is number && data.powerKw >= 0 && data.powerKw <= 2000 &&
+        data.pressureBar is number && data.pressureBar >= 0 && data.pressureBar <= 100 &&
+        data.status in ['تعمل', 'عطب', 'صيانة'] &&
+        (!('lastTestDate' in data) || (data.lastTestDate is string && data.lastTestDate.size() <= 20)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 600)) &&
+        (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 160)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidWaterTank(data) {
+      return data.keys().hasAll(['ownerUid', 'tankCode', 'tankName', 'facility', 'capacityM3', 'currentM3', 'minSafeM3', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerUid', 'localId', 'tankCode', 'tankName', 'facility', 'capacityM3', 'currentM3', 'minSafeM3', 'lastInspection', 'notes', 'updatedBy', 'createdAt', 'updatedAt']) &&
+        data.ownerUid is string && data.ownerUid == request.auth.uid &&
+        (!('localId' in data) || data.localId is number) &&
+        data.tankCode is string && data.tankCode.size() >= 1 && data.tankCode.size() <= 80 &&
+        data.tankName is string && data.tankName.size() >= 1 && data.tankName.size() <= 200 &&
+        data.facility is string && data.facility.size() >= 1 && data.facility.size() <= 160 &&
+        data.capacityM3 is number && data.capacityM3 > 0 && data.capacityM3 <= 100000 &&
+        data.currentM3 is number && data.currentM3 >= 0 && data.currentM3 <= data.capacityM3 &&
+        data.minSafeM3 is number && data.minSafeM3 >= 0 && data.minSafeM3 <= data.capacityM3 &&
+        (!('lastInspection' in data) || (data.lastInspection is string && data.lastInspection.size() <= 20)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 600)) &&
+        (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 160)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidIntruderAlert(data) {
+      return data.keys().hasAll(['ownerUid', 'attemptedName', 'deviceType', 'targetPhone', 'smsStatus', 'smsMessage', 'createdAt']) &&
+        data.keys().hasOnly(['ownerUid', 'localId', 'attemptedName', 'deviceType', 'deviceInfo', 'targetPhone', 'smsStatus', 'smsMessage', 'createdAt']) &&
+        data.ownerUid is string && data.ownerUid == request.auth.uid &&
+        (!('localId' in data) || data.localId is number) &&
+        data.attemptedName is string && data.attemptedName.size() >= 1 && data.attemptedName.size() <= 160 &&
+        data.deviceType is string && data.deviceType.size() >= 1 && data.deviceType.size() <= 40 &&
+        (!('deviceInfo' in data) || (data.deviceInfo is string && data.deviceInfo.size() <= 300)) &&
+        data.targetPhone is string && data.targetPhone.size() <= 40 &&
+        data.smsStatus is string && data.smsStatus.size() >= 1 && data.smsStatus.size() <= 60 &&
+        data.smsMessage is string && data.smsMessage.size() >= 1 && data.smsMessage.size() <= 500 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidStorageSnapshot(data) {
+      return data.keys().hasAll(['ownerUid', 'actionLabel', 'category', 'deviceType', 'recordCount', 'motorCount', 'tankCount', 'summary', 'createdAt']) &&
+        data.keys().hasOnly(['ownerUid', 'actionLabel', 'category', 'deviceType', 'recordCount', 'motorCount', 'tankCount', 'summary', 'createdAt']) &&
+        data.ownerUid is string && data.ownerUid == request.auth.uid &&
+        data.actionLabel is string && data.actionLabel.size() >= 1 && data.actionLabel.size() <= 120 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+        data.deviceType is string && data.deviceType.size() >= 1 && data.deviceType.size() <= 40 &&
+        data.recordCount is number && data.recordCount >= 0 &&
+        data.motorCount is number && data.motorCount >= 0 &&
+        data.tankCount is number && data.tankCount >= 0 &&
+        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 400 &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // Connection test doc
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // Admin registry
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(uid) && isAdmin() && isValidAdminDoc(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(uid) && isAdmin() && isValidAdminDoc(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'name']);
+      allow delete: if isValidId(uid) && isBootstrappedAdmin();
+    }
+
+    // Cooperative members
+    match /cooperative_members/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.uid == request.auth.uid);
+      allow create: if isValidId(uid) && isAdmin() && isValidMemberDoc(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(uid) && isAdmin() && isValidMemberDoc(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'role']);
+      allow delete: if isValidId(uid) && isAdmin();
+    }
+
+    // PII-isolated supervisor phone settings (doc ID matches owner UID)
+    match /security_settings/{settingId} {
+      allow get: if isValidId(settingId) && (isAdmin() || isOwner(settingId) || (resource != null && isOwner(existing().ownerUid)));
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(settingId) && isVerified() &&
+        isValidSecuritySetting(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(settingId) && isVerified() &&
+        isValidSecuritySetting(incoming()) &&
+        (isAdmin() || isOwner(existing().ownerUid)) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['supervisorName', 'supervisorPhone', 'smsAlertEnabled', 'updatedAt']);
+      allow delete: if isValidId(settingId) && (isAdmin() || isOwner(existing().ownerUid));
+    }
+
+    // Operational Records (HSE, Maintenance, Extinguishers, Smoke)
+    match /ccls_records/{recordId} {
+      allow get: if isValidId(recordId) && (isAdmin() || (resource != null && isOwner(existing().ownerUid)));
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(recordId) && isVerified() &&
+        isValidOperationalRecord(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(recordId) && isVerified() &&
+        isValidOperationalRecord(incoming()) &&
+        (isAdmin() || isOwner(existing().ownerUid)) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['localId', 'type', 'field1', 'field2', 'ext_type', 'ext_kg', 'facility', 'start_date', 'end_date', 'priority', 'responsible', 'notes', 'manual_status', 'updatedAt']);
+      allow delete: if isValidId(recordId) && (isAdmin() || isOwner(existing().ownerUid));
+    }
+
+    // Anti-Incendie Electric Motors
+    match /fire_motors/{motorId} {
+      allow get: if isValidId(motorId) && (isAdmin() || (resource != null && isOwner(existing().ownerUid)));
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(motorId) && isVerified() &&
+        isValidFireMotor(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(motorId) && isVerified() &&
+        isValidFireMotor(incoming()) &&
+        (isAdmin() || isOwner(existing().ownerUid)) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'lastTestDate', 'notes', 'updatedBy', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['localId', 'motorCode', 'motorName', 'facility', 'powerKw', 'pressureBar', 'status', 'lastTestDate', 'notes', 'updatedBy', 'updatedAt'])
+        );
+      allow delete: if isValidId(motorId) && (isAdmin() || isOwner(existing().ownerUid));
+    }
+
+    // Water Storage Tanks (m3)
+    match /water_tanks/{tankId} {
+      allow get: if isValidId(tankId) && (isAdmin() || (resource != null && isOwner(existing().ownerUid)));
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(tankId) && isVerified() &&
+        isValidWaterTank(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(tankId) && isVerified() &&
+        isValidWaterTank(incoming()) &&
+        (isAdmin() || isOwner(existing().ownerUid)) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['currentM3', 'lastInspection', 'notes', 'updatedBy', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['localId', 'tankCode', 'tankName', 'facility', 'capacityM3', 'currentM3', 'minSafeM3', 'lastInspection', 'notes', 'updatedBy', 'updatedAt'])
+        );
+      allow delete: if isValidId(tankId) && (isAdmin() || isOwner(existing().ownerUid));
+    }
+
+    // Intruder Alerts (PII restricted to owner & admin)
+    match /intruder_alerts/{alertId} {
+      allow get: if isValidId(alertId) && (isAdmin() || (resource != null && isOwner(existing().ownerUid)));
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(alertId) && isVerified() &&
+        isValidIntruderAlert(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(alertId) && (isAdmin() || isOwner(existing().ownerUid));
+    }
+
+    // Storage Memory Snapshots
+    match /storage_snapshots/{snapshotId} {
+      allow get: if isValidId(snapshotId) && (isAdmin() || (resource != null && isOwner(existing().ownerUid)));
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isValidId(snapshotId) && isVerified() &&
+        isValidStorageSnapshot(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(snapshotId) && (isAdmin() || isOwner(existing().ownerUid));
+    }
+  }
+}
